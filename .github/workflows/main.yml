@@ -1,0 +1,45 @@
+name: Auto Translate GitBook Pages
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 3 * * *' # каждый день в 3 утра по UTC
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y jq curl
+
+      - name: Translate Markdown files
+        run: |
+          API="https://libretranslate.de/translate"
+          for file in $(find . -name "*.md"); do
+            echo "🔹 Translating $file"
+            text=$(cat "$file" | sed 's/"/\\"/g')
+            base="${file%.*}"
+            for lang in en uk es lt; do
+              echo "➡️ Translating to $lang..."
+              translated=$(curl -s -X POST -H "Content-Type: application/json" \
+                -d "{\"q\": \"$text\", \"source\": \"ru\", \"target\": \"$lang\", \"format\": \"text\"}" \
+                $API | jq -r '.translatedText')
+              echo "$translated" > "${base}.${lang}.md"
+              echo "✅ ${base}.${lang}.md created"
+            done
+          done
+
+      - name: Commit and push translations
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Auto-translated Markdown pages"
+          git push
