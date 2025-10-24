@@ -7,12 +7,17 @@ on:
   schedule:
     - cron: '0 3 * * *' # каждый день в 3 утра по UTC
 
+permissions:
+  contents: write  # ✅ разрешаем workflow изменять файлы в репозитории
+
 jobs:
   translate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  # ✅ добавляем токен для авторизации
 
       - name: Install dependencies
         run: |
@@ -38,8 +43,8 @@ jobs:
 
       - name: Commit and push translations
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Auto-translated Markdown pages"
-          git push
+          git commit -m "Auto-translated Markdown pages" || echo "No changes to commit"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
